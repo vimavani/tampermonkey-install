@@ -1,0 +1,187 @@
+// ==UserScript==
+// @name         PPA Buttons
+// @namespace    http://tampermonkey.net/
+// @version      1.7
+// @description  Adds buttons to select predefined time ranges and a configuration menu
+// @author       Viren Mavani
+// @match        https://fclm-portal.amazon.com/ppa/inspect/node*
+// @match        https://fclm-portal.amazon.com/reports/*
+// @match        https://fclm-portal.amazon.com/ppa/inspect/*
+// @grant        none
+// ==/UserScript==
+
+(function() {
+    'use strict';
+
+    // Helper function to format the date as YYYY/MM/DD
+    function formatDate(date) {
+        const year = date.getFullYear();
+        const month = ('0' + (date.getMonth() + 1)).slice(-2); // Ensure two digits
+        const day = ('0' + date.getDate()).slice(-2); // Ensure two digits
+        return `${year}/${month}/${day}`;
+    }
+
+    // Function to get the current zoom level
+    function getZoomLevel() {
+        return window.devicePixelRatio || 1;
+    }
+
+    // Function to create a button
+    function createButton(name, onClick) {
+        const zoomLevel = getZoomLevel();
+
+        const button = document.createElement('button');
+        button.innerHTML = name;
+        button.style.margin = '5px'; // Add some margin for spacing
+        button.onclick = onClick;
+        return button;
+    }
+
+    // Function to handle the special case for 00:00 to 04:00
+    function handleEarlyMorning() {
+        const currentDate = new Date();
+        const hours = currentDate.getHours();
+
+        // Make sure the intraday radio button is selected
+        document.querySelector('input[type="radio"][value="Intraday"]').checked = true;
+
+        if (hours >= 0 && hours < 5) {
+            const prevDate = new Date(currentDate);
+            prevDate.setDate(currentDate.getDate() - 1);
+            const formattedPrevDate = formatDate(prevDate);
+
+            document.querySelector('input[name="startDateIntraday"]').value = formattedPrevDate;
+            document.querySelector('input[name="endDateIntraday"]').value = formatDate(currentDate);
+        } else {
+            document.querySelector('input[name="startDateIntraday"]').value = formatDate(currentDate);
+            const nextDate = new Date(currentDate);
+            nextDate.setDate(currentDate.getDate() + 1);
+            document.querySelector('input[name="endDateIntraday"]').value = formatDate(nextDate);
+        }
+
+        document.querySelector('select[name="startHourIntraday"]').value = '4';
+        document.querySelector('select[name="startMinuteIntraday"]').value = '0';
+        document.querySelector('select[name="endHourIntraday"]').value = '4';
+        document.querySelector('select[name="endMinuteIntraday"]').value = '0';
+    }
+
+    // Function to add buttons to the configuration menu
+    function addButtonsToMenu() {
+        // Find the configuration menu container
+        const cpSubmitRow = document.getElementsByClassName("cp-submit-row")[0];
+        if (!cpSubmitRow) {
+            console.error('Configuration menu container not found');
+            return;
+        }
+
+        // Create buttons
+        const buttonData = [
+            { name: 'DAY', action: () => {
+                const currentDate = new Date();
+
+                document.querySelector('input[type="radio"][value="Intraday"]').checked = true;
+                document.querySelector('input[name="startDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="startHourIntraday"]').value = '8';
+                document.querySelector('select[name="startMinuteIntraday"]').value = '0';
+
+                document.querySelector('input[name="endDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="endHourIntraday"]').value = '12';
+                document.querySelector('select[name="endMinuteIntraday"]').value = '30';
+            }},
+            { name: 'TWI', action: () => {
+                const currentDate = new Date();
+
+                document.querySelector('input[type="radio"][value="Intraday"]').checked = true;
+                document.querySelector('input[name="startDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="startHourIntraday"]').value = '13';
+                document.querySelector('select[name="startMinuteIntraday"]').value = '30';
+
+                document.querySelector('input[name="endDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="endHourIntraday"]').value = '19';
+                document.querySelector('select[name="endMinuteIntraday"]').value = '0';
+            }},
+             { name: 'NIGHT', action: () => {
+                const currentDate = new Date();
+                const hours = currentDate.getHours();
+
+                // Make sure the intraday radio button is selected
+                document.querySelector('input[type="radio"][value="Intraday"]').checked = true;
+
+                if (hours >= 0 && hours < 5) {
+                    const prevDate = new Date(currentDate);
+                    prevDate.setDate(currentDate.getDate() - 1);
+                    const formattedPrevDate = formatDate(prevDate);
+
+                    document.querySelector('input[name="startDateIntraday"]').value = formattedPrevDate;
+                    document.querySelector('input[name="endDateIntraday"]').value = formatDate(currentDate);
+                } else {
+                    document.querySelector('input[name="startDateIntraday"]').value = formatDate(currentDate);
+                    const nextDate = new Date(currentDate);
+                    nextDate.setDate(currentDate.getDate() + 1);
+                    document.querySelector('input[name="endDateIntraday"]').value = formatDate(nextDate);
+                }
+
+                document.querySelector('select[name="startHourIntraday"]').value = '19';
+                document.querySelector('select[name="startMinuteIntraday"]').value = '0';
+                document.querySelector('select[name="endHourIntraday"]').value = '0';
+                document.querySelector('select[name="endMinuteIntraday"]').value = '30';
+            }},
+            { name: 'WD', action: () => {
+                const currentDate = new Date();
+
+                document.querySelector('input[type="radio"][value="Intraday"]').checked = true;
+                document.querySelector('input[name="startDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="startHourIntraday"]').value = '0';
+                document.querySelector('select[name="startMinuteIntraday"]').value = '0';
+
+                document.querySelector('input[name="endDateIntraday"]').value = formatDate(currentDate);
+                document.querySelector('select[name="endHourIntraday"]').value = '4';
+                document.querySelector('select[name="endMinuteIntraday"]').value = '0';
+            }},
+            { name: '4-4', action: handleEarlyMorning }
+        ];
+
+        // Create a container for the buttons
+        const buttonContainer = document.createElement('div');
+        buttonContainer.style.display = 'flex';
+        buttonContainer.style.alignItems = 'center';
+         buttonContainer.style.marginTop = '-25px';
+        buttonContainer.style.marginLeft = '10px';
+
+
+        // Append buttons to the container
+        buttonData.forEach(({ name, action }) => {
+            const button = createButton(name, action);
+            buttonContainer.appendChild(button);
+        });
+
+        // Append the button container to the configuration menu row
+        cpSubmitRow.appendChild(buttonContainer);
+
+        // Ensure menu_div is appended after buttons
+        const menu_div = document.getElementById("menu_div");
+        if (menu_div) {
+            cpSubmitRow.appendChild(menu_div);
+        }
+    }
+
+    // Initialize buttons and configuration menu
+    function initialize() {
+        // Set table width
+        for (let i = 0; i < document.getElementsByTagName("table").length; i++) {
+            if (document.getElementsByTagName("table")[i].className === "") {
+
+                break; // Exit loop after setting width
+            }
+        }
+
+
+        // Add additional buttons
+        addButtonsToMenu();
+    }
+
+    // Call the initialization function
+    initialize();
+
+
+})();
